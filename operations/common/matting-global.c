@@ -52,8 +52,21 @@ gegl_chant_int (iterations, _("Iterations"), 1, G_MAXINT, 10,
   exit(1);\
   }
 
+typedef float Color[3];
+
+typedef struct {
+  int x;
+  int y;
+} Position;
+
+typedef struct {
+  Color color;
+  Position pos;
+} ColorSample;
+
 // Shortcut for doing things in all three channels
 #define COLOR(expr) {int c; for (c = 0; c < 3; c++) { expr; }}
+#define SQUARE(x) ((x)*(x))
 
 // Save all important memories to output image buffer to save memory
 #define FG_DISTANCE(output, index) (output[index*4+0])
@@ -61,10 +74,7 @@ gegl_chant_int (iterations, _("Iterations"), 1, G_MAXINT, 10,
 #define FG_INDEX(output, index) (*((int*)(&output[index*4+2])))
 #define BG_INDEX(output, index) (*((int*)(&output[index*4+3])))
 
-/* We don't use the babl_format_get_n_components function for these values,
- * as literal constants can be used for stack allocation of array sizes. They
- * are double checked in matting_process.
- */
+// Expected input
 #define COMPONENTS_AUX    1
 #define COMPONENTS_INPUT  3
 #define COMPONENTS_OUTPUT 4
@@ -98,40 +108,20 @@ matting_get_cached_region (GeglOperation * operation,
   return *gegl_operation_source_get_bounding_box (operation, "input");
 }
 
-typedef float Color[3];
-
-typedef struct {
-  int x;
-  int y;
-} Position;
-
-typedef struct {
-  Color color;
-  Position pos;
-} ColorSample;
-
-#define SQUARE(x) ((x)*(x))
 static inline float get_alpha (Color F, Color B, Color I)
 {
-  int c;
   float result = 0;
   float div = 0;
-  for (c = 0; c < 3; c++)
-    {
-      result += (I[c] - B[c]) * (F[c] - B[c]);
-      div += SQUARE(F[c] - B[c]);
-    }
+  COLOR(result += (I[c] - B[c]) * (F[c] - B[c]));
+  COLOR(div += SQUARE(F[c] - B[c]));
+
   return min(max(result / div, 0), 1);
 }
 
 static inline float get_color_cost (Color F, Color B, Color I, float alpha)
 {
-  int c;
   float result = 0;
-  for (c = 0; c < 3; c++)
-    {
-      result += SQUARE(I[c] - (alpha * F[c] + (1 - alpha) * B[c]));
-    }
+  COLOR(result += SQUARE(I[c] - (alpha * F[c] + (1 - alpha) * B[c])));
 
   // TODO(rggjan): Remove sqrt to get faster code?
   // TODO(rggjan): Remove 255
@@ -177,8 +167,10 @@ static inline void do_propagate(GArray *foreground_samples, GArray *background_s
     {
       int xdiff, ydiff;
       float best_cost = FLT_MAX;
-      float *best_fg_distance = &output[index_orig * 4 + 0];
-      float *best_bg_distance = &output[index_orig * 4 + 1];
+
+      // Get current best result
+      float *best_fg_distance = &FG_DISTANCE(output, index_orig);
+      float *best_bg_distance = &BG_DISTANCE(output, index_orig);
 
       for (ydiff = -1; ydiff <= 1; ydiff++)
         {
@@ -220,6 +212,7 @@ static inline void do_random_search(GArray *foreground_samples, GArray *backgrou
 
   int dist_f = fl;
   int dist_b = bl;
+
   int index = y * w + x;
 
   int best_fi = FG_INDEX(output, index);
