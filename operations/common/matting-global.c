@@ -33,25 +33,6 @@ gegl_chant_int (iterations, _("Iterations"), 1, G_MAXINT, 10,
 #include "gegl-chant.h"
 #include "gegl-debug.h"
 
-#define max(a,b) \
-  ({ __typeof__ (a) _a = (a); \
-  __typeof__ (b) _b = (b); \
-  _a > _b ? _a : _b; })
-
-#define min(a,b) \
-  ({ __typeof__ (a) _a = (a); \
-  __typeof__ (b) _b = (b); \
-  _a > _b ? _b : _a; })
-
-#define likely(x)       __builtin_expect((x),1)
-#define unlikely(x)       __builtin_expect((x),0)
-
-#define ASSERT(condition) \
-  if(unlikely(!(condition))) { \
-  printf("Error at line %i\n", __LINE__); \
-  exit(1);\
-  }
-
 typedef float Color[3];
 
 typedef struct {
@@ -115,7 +96,7 @@ static inline float get_alpha (Color F, Color B, Color I)
   COLOR(result += (I[c] - B[c]) * (F[c] - B[c]));
   COLOR(div += SQUARE(F[c] - B[c]));
 
-  return min(max(result / div, 0), 1);
+  return MIN(MAX(result / div, 0), 1);
 }
 
 static inline float get_color_cost (Color F, Color B, Color I, float alpha)
