@@ -214,9 +214,12 @@ static inline void do_propagate(GArray *foreground_samples, GArray *background_s
     }
 }
 
-static inline void do_random_search(GArray *foreground_samples, GArray *background_samples, gfloat *input, gfloat *output, int x, int y, int w) {
-  int dist_f = foreground_samples->len;
-  int dist_b = background_samples->len;
+static inline void do_random_search(GArray *foreground_samples, GArray *background_samples, gfloat *input, gfloat *output, int x, int y, int w) {    
+  int fl = foreground_samples->len;
+  int bl = background_samples->len;
+
+  int dist_f = fl;
+  int dist_b = bl;
   int index = y * w + x;
 
   int best_fi = FG_INDEX(output, index);
@@ -238,10 +241,8 @@ static inline void do_random_search(GArray *foreground_samples, GArray *backgrou
   while (dist_f > 0 || dist_b > 0)
     {
       // Get new indices to check
-      int fl = foreground_samples->len;
-      int bl = background_samples->len;
       int fi = (start_fi + (rand() % (dist_f * 2 + 1)) + fl - dist_f) % fl;
-      int bi = (start_bi + (rand() % (dist_b * 2 + 1)) + fl - dist_b) % bl;
+      int bi = (start_bi + (rand() % (dist_b * 2 + 1)) + bl - dist_b) % bl;
 
       ColorSample foreground = g_array_index(foreground_samples, ColorSample, fi);
       ColorSample background = g_array_index(background_samples, ColorSample, bi);
